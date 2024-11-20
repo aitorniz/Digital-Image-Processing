@@ -3,7 +3,7 @@
 // Author      : Ronny Haensch
 // Version     : 2.0
 // Copyright   : -
-// Description : 
+// Description :
 //============================================================================
 
 #include "Dip2.h"
@@ -21,7 +21,33 @@ namespace dip2 {
 cv::Mat_<float> spatialConvolution(const cv::Mat_<float>& src, const cv::Mat_<float>& kernel)
 {
    // TO DO !!
-   return src.clone();
+   int kernel_size = kernel.rows;
+   int padding_size = kernel_size/2;
+
+   cv::Mat_<float> src_padding;
+   cv::copyMakeBorder(src, src_padding, padding_size, padding_size, padding_size, padding_size, cv::BORDER_CONSTANT, cv::Scalar(0));
+
+   cv::Mat_<float> flipped_kernel;
+   cv::flip(kernel, flipped_kernel, -1);
+
+   cv::Mat_<float> output(src.size());
+   //std::cout << output << std::endl;
+   for(int i=padding_size; i<src_padding.rows - padding_size; i++){
+        for(int j=padding_size; j<src_padding.cols - padding_size; j++){
+            float sum = 0.0f;
+            for(int k= -padding_size; k<= padding_size; k++){
+                for(int l=-padding_size; l<= padding_size; l++){
+                    float pixel = src_padding.at<float>(i+k, j+l);
+                    float kernel_value = flipped_kernel.at<float>(k+padding_size, l+padding_size);
+                    sum += pixel*kernel_value;
+                }
+            }
+            output.at<float>(i-padding_size, j-padding_size) = sum;
+
+        }
+    }
+
+   return output;
 }
 
 /**
@@ -34,7 +60,14 @@ cv::Mat_<float> spatialConvolution(const cv::Mat_<float>& src, const cv::Mat_<fl
 cv::Mat_<float> averageFilter(const cv::Mat_<float>& src, int kSize)
 {
    // TO DO !!
-   return src.clone();
+   cv::Mat_<float> kernel = cv::Mat::ones(kSize, kSize, CV_32F);
+   float scalar = 1/pow(kSize, 2);
+
+   cv::Mat_<float> Avg_Kernel = kernel*scalar;
+   //std::cout << Avg_Kernel << std::endl;
+   cv::Mat_<float> output = spatialConvolution(src, Avg_Kernel);
+
+   return output;
 }
 
 /**
@@ -46,7 +79,27 @@ cv::Mat_<float> averageFilter(const cv::Mat_<float>& src, int kSize)
 cv::Mat_<float> medianFilter(const cv::Mat_<float>& src, int kSize)
 {
    // TO DO !!
-   return src.clone();
+   int padding_size = kSize/2;
+
+   cv::Mat_<float> src_padding;
+   cv::copyMakeBorder(src, src_padding, padding_size, padding_size, padding_size, padding_size, cv::BORDER_CONSTANT, cv::Scalar(0));
+
+   cv::Mat_<float> output(src.size());
+   //std::cout << output << std::endl;
+   for(int i=padding_size; i<src_padding.rows - padding_size; i++){
+        for(int j=padding_size; j<src_padding.cols - padding_size; j++){
+            std::vector<float> neighbors;
+            for(int k= -padding_size; k<= padding_size; k++){
+                for(int l=-padding_size; l<= padding_size; l++){
+                    neighbors.push_back(src[i+k][j+l]);
+                }
+            }
+            std::sort(neighbors.begin(),neighbors.end());
+            output.at<float>(i - padding_size,j - padding_size) = neighbors[neighbors.size()/2];
+        }
+    }
+
+   return output;
 }
 
 /**
@@ -60,7 +113,40 @@ cv::Mat_<float> medianFilter(const cv::Mat_<float>& src, int kSize)
 cv::Mat_<float> bilateralFilter(const cv::Mat_<float>& src, int kSize, float sigma_spatial, float sigma_radiometric)
 {
     // TO DO !!
-    return src.clone();
+    int padding_size = kSize/2;
+    cv::Mat_<float> output = cv::Mat_<float>::zeros(src.size());
+
+    cv::Mat_<float> src_padding;
+    cv::copyMakeBorder(src, src_padding, padding_size, padding_size, padding_size, padding_size, cv::BORDER_CONSTANT, cv::Scalar(0));
+
+    for(int i=padding_size; i<src_padding.rows - padding_size; i++){
+        for(int j=padding_size; j<src_padding.cols - padding_size; j++){
+            float weighted_sum = 0.0;
+            float weight_sum = 0.0;
+            for(int k= -padding_size; k<= padding_size; k++){
+                for(int l=-padding_size; l<= padding_size; l++){
+
+                    int ki = i + k;
+                    int li = j + l;
+
+                    float spatial_dist = k*k + l*l;
+                    float spatial_weight = exp(-spatial_dist/(2*sigma_spatial*sigma_spatial));
+
+                    float intensity_diff = src_padding.at<float>(i,j) - src_padding.at<float>(ki,li);
+                    float radiometric_weight = exp(-intensity_diff*intensity_diff/(2*sigma_radiometric*sigma_radiometric));
+
+                    float weight = spatial_weight*radiometric_weight;
+
+                    weighted_sum += weight*src_padding.at<float>(ki,li);
+                    weight_sum += weight;
+                }
+            }
+
+            output.at<float>(i - padding_size,j - padding_size) = weighted_sum/weight_sum;
+        }
+    }
+
+    return output;
 }
 
 /**
@@ -84,8 +170,17 @@ cv::Mat_<float> nlmFilter(const cv::Mat_<float>& src, int searchSize, double sig
  */
 NoiseReductionAlgorithm chooseBestAlgorithm(NoiseType noiseType)
 {
+
     // TO DO !!
-    return (NoiseReductionAlgorithm) -1;
+    switch(noiseType){
+        case NOISE_TYPE_1:
+            return NR_MEDIAN_FILTER;
+        case NOISE_TYPE_2:
+            return NR_BILATERAL_FILTER;
+        default:
+            return (NoiseReductionAlgorithm) -1;
+    }
+    //return (NoiseReductionAlgorithm) -1;
 }
 
 
@@ -99,28 +194,28 @@ cv::Mat_<float> denoiseImage(const cv::Mat_<float> &src, NoiseType noiseType, di
     switch (noiseReductionAlgorithm) {
         case dip2::NR_MOVING_AVERAGE_FILTER:
             switch (noiseType) {
-                case NOISE_TYPE_1:
-                    return dip2::averageFilter(src, 1);
-                case NOISE_TYPE_2:
-                    return dip2::averageFilter(src, 1);
+                case gaussian:
+                    return dip2::averageFilter(src, 5);
+                case shot:
+                    return dip2::averageFilter(src, 3);
                 default:
                     throw std::runtime_error("Unhandled noise type!");
             }
         case dip2::NR_MEDIAN_FILTER:
             switch (noiseType) {
-                case NOISE_TYPE_1:
-                    return dip2::medianFilter(src, 1);
-                case NOISE_TYPE_2:
-                    return dip2::medianFilter(src, 1);
+                case impulse:
+                    return dip2::medianFilter(src, 3);
+                case random:
+                    return dip2::medianFilter(src, 5);
                 default:
                     throw std::runtime_error("Unhandled noise type!");
             }
         case dip2::NR_BILATERAL_FILTER:
             switch (noiseType) {
-                case NOISE_TYPE_1:
-                    return dip2::bilateralFilter(src, 1, 1.0f, 1.0f);
-                case NOISE_TYPE_2:
-                    return dip2::bilateralFilter(src, 1, 1.0f, 1.0f);
+                case gaussian:
+                    return dip2::bilateralFilter(src, 5, 10.0f, 10.0f);
+                case random:
+                    return dip2::bilateralFilter(src, 3, 5.0f, 5.0f);
                 default:
                     throw std::runtime_error("Unhandled noise type!");
             }
