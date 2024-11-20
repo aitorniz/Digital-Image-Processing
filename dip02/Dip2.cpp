@@ -159,7 +159,27 @@ cv::Mat_<float> bilateralFilter(const cv::Mat_<float>& src, int kSize, float sig
  */
 cv::Mat_<float> nlmFilter(const cv::Mat_<float>& src, int searchSize, double sigma)
 {
-    return src.clone();
+	int image_rows = src.sizeof(src)/src.sizeof(src[0]);
+	int image_cols = src.sizeof(src[0])/src.sizeof(int);
+
+    for(int i = 0 ; i < image_rows ; i++){
+	   for(int j = 0 ; j < image_cols ; j++){
+		   float local_mean = averageFilter(src[i][j], searchSize);
+                   float list_weights[image_rows][image_cols];
+		   //pixel's mean we will compare with the whole image
+		  for (int k = 0 ; k < searchSize ; k++){
+			 for(l = 0 ; l < searchSize ; l++){
+				cv::Mat_<float>&
+				float non_local_mean = averageFilter(src
+				//average the subset of searchSize range
+				float  normalized_weight = exp
+
+			 }
+		  }
+	   }
+	   }
+
+	return src.clone();
 }
 
 
