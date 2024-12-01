@@ -32,7 +32,7 @@ cv::Mat_<float> createGaussianKernel1D(int kSize){
     cv::Mat_<float> GaussianKernel1D(1, kSize, 0.0f);
     //Define the necessary variables for Gaussian distribution computation
     float sigma = 1;
-    float mu =  ;
+    float mu = 0  ;
     double pi = 2 * asin(1.0);
     //For each element of the kernel
     for( int i = 0 ; i < kSize ; i++){
@@ -45,7 +45,8 @@ cv::Mat_<float> createGaussianKernel1D(int kSize){
 		    gaussian_index = i - 3;
 	    }
 	    //Compute element's value (weight)
-	    GaussianKernel1D.at<float>(i) = (1 / (2 * pi * sigma)) * exp(-0.5 * (pow(gaussian_index - mu, 2)/pow(sigma, 2)));
+	    GaussianKernel1D.at<float>(i) = (1 / (2 * pi * pow(sigma, 2))) * exp(-0.5 * (pow(gaussian_index - mu, 2)/pow(sigma, 2)));
+	    
     }
     //print
     std::cout << GaussianKernel1D;
@@ -59,7 +60,6 @@ cv::Mat_<float> createGaussianKernel1D(int kSize){
  */
 cv::Mat_<float> createGaussianKernel2D(int kSize){
 
-    
     return cv::Mat_<float>::zeros(kSize, kSize);
 }
 
